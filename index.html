@@ -1,0 +1,1545 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Around the circle: ear training</title>
+<style>
+:root {
+  color-scheme: light;
+  --bg: #EDF1F5;
+  --surface: #FFFFFF;
+  --ink: #16233B;
+  --muted: #5A6781;
+  --line: #C7D0DD;
+  --visited: #D6DEE9;
+  --listen: #E7B43C;
+  --on-listen: #2A1D00;
+  --turn: #0F7F70;
+  --on-turn: #FFFFFF;
+  --focus: #2F6FEB;
+  --wrong: #B3261E;
+  --display: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", P052, "URW Palladio L", Georgia, serif;
+  --ui: system-ui, -apple-system, "Segoe UI", Roboto, "Noto Sans", Arial, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    color-scheme: dark;
+    --bg: #0E1524;
+    --surface: #18223A;
+    --ink: #E9EDF5;
+    --muted: #9BA8BF;
+    --line: #33415F;
+    --visited: #2A3856;
+    --listen: #E9B949;
+    --on-listen: #231800;
+    --turn: #3CC6AC;
+    --on-turn: #04221D;
+    --focus: #8AB4FF;
+    --wrong: #FF8F85;
+  }
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font: 16px/1.45 var(--ui);
+}
+button, select, input { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.app { max-width: 1000px; margin: 0 auto; padding: clamp(14px, 3vw, 28px); }
+
+/* ---------- Header ---------- */
+.top {
+  display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between;
+  gap: 12px 24px; margin-bottom: clamp(14px, 3vw, 26px);
+}
+h1 { font: 600 1.7rem/1.1 var(--display); margin: 0 0 4px; letter-spacing: -0.01em; }
+.lede { margin: 0; color: var(--muted); max-width: 46ch; }
+.inst { display: flex; flex-direction: column; gap: 4px; font-size: .9rem; color: var(--muted); min-width: 0; }
+select {
+  padding: 8px 10px; border: 1.5px solid var(--line); border-radius: 9px;
+  background: var(--surface); color: var(--ink); max-width: 100%;
+}
+
+/* ---------- Layout ---------- */
+.layout { display: grid; gap: clamp(20px, 4vw, 40px); }
+@media (min-width: 820px) {
+  .layout { grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr); align-items: start; }
+}
+.stage { display: flex; flex-direction: column; align-items: center; min-width: 0; }
+
+/* ---------- Circle ---------- */
+.circle {
+  position: relative; width: min(100%, 440px); aspect-ratio: 1;
+  container-type: inline-size;
+}
+.circle::before {
+  content: ""; position: absolute; inset: 9%;
+  border: 1.5px solid var(--line); border-radius: 50%;
+}
+.key {
+  position: absolute; width: 15.5%; aspect-ratio: 1; padding: 0;
+  transform: translate(-50%, -50%);
+  border: 1.5px solid var(--ink); border-radius: 50%;
+  background: var(--surface); color: var(--ink);
+  font: 600 20px/1 var(--display); font-size: 5.2cqw;
+  display: grid; place-items: center; cursor: pointer;
+  transition: background-color .15s, color .15s, transform .15s;
+}
+.key[aria-pressed="false"] {
+  border: 1.5px dashed var(--muted); background: transparent; color: var(--muted);
+  text-decoration: line-through; text-decoration-thickness: 1.5px;
+}
+.key.visited { background: var(--visited); }
+.key.next { outline: 2px dotted var(--ink); outline-offset: 3px; }
+.key.cur { background: var(--ink); color: var(--bg); transform: translate(-50%, -50%) scale(1.14); }
+.key:focus-visible { outline: 2px solid var(--focus); outline-offset: 3px; }
+
+.hub {
+  position: absolute; inset: 21.5%; border-radius: 50%;
+  background: var(--surface); border: 1.5px solid var(--line);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  text-align: center; gap: 1.2cqw;
+  transition: background-color .12s, color .12s, border-color .12s;
+}
+.hub[data-phase="listen"] { background: var(--listen); color: var(--on-listen); border-color: var(--listen); }
+.hub[data-phase="turn"], .hub[data-phase="along"] { background: var(--turn); color: var(--on-turn); border-color: var(--turn); }
+.hub-phase { font-weight: 650; font-size: 18px; font-size: 4.8cqw; line-height: 1.1; }
+.hub-key { font: 600 64px/0.95 var(--display); font-size: 17cqw; letter-spacing: -0.02em; }
+.hub-sub { font-size: 13px; font-size: 3.2cqw; min-height: 1.2em; opacity: .85; }
+.beats { display: flex; gap: 1.8cqw; margin-top: .6cqw; }
+.beats i {
+  width: 10px; width: 2.6cqw; aspect-ratio: 1; border-radius: 50%;
+  border: 1.5px solid currentColor; opacity: .45;
+}
+.beats i.on { background: currentColor; opacity: 1; }
+.hub[data-phase="idle"] .beats, .hub[data-phase="done"] .beats { visibility: hidden; }
+
+.circle-help { margin: 10px 0 0; color: var(--muted); font-size: .9rem; text-align: center; min-height: 1.45em; }
+.link {
+  background: none; border: 0; padding: 0; color: var(--ink);
+  text-decoration: underline; text-underline-offset: 2px; cursor: pointer;
+}
+
+/* ---------- Direction arrows (top corners of the circle) ---------- */
+.arrows { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+.arrows path { fill: none; stroke: var(--line); stroke-width: .5; stroke-linecap: round; stroke-linejoin: round; transition: stroke .15s; }
+.circle[data-dir="7"] .arc-cw, .circle[data-dir="5"] .arc-ccw { stroke: var(--ink); stroke-width: .8; }
+.dir { position: absolute; top: 0; width: 21%; height: 21%; cursor: pointer; }
+.dir.cw { right: 0; }
+.dir.ccw { left: 0; }
+.dir input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.dir span {
+  position: absolute; top: 8px; top: 2cqw;
+  padding: .22em .6em; border-radius: 999px; line-height: 1.2;
+  font-size: 12px; font-size: max(11px, 3.3cqw); font-weight: 600;
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--muted);
+}
+.dir.cw span { right: 2px; right: .4cqw; }
+.dir.ccw span { left: 2px; left: .4cqw; }
+.dir input:checked + span { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.dir input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: 2px; }
+.dir input:disabled { cursor: default; }
+.dir input:disabled + span { opacity: .55; }
+
+/* ---------- Transport ---------- */
+.transport { margin-top: 14px; display: flex; flex-direction: column; align-items: center; gap: 8px; width: 100%; }
+.btns { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
+.btn {
+  padding: 10px 16px; border-radius: 10px; cursor: pointer;
+  border: 1.5px solid var(--ink); background: transparent; color: var(--ink); font-weight: 550;
+}
+.btn.primary { background: var(--ink); color: var(--bg); padding: 13px 26px; font-size: 1.05rem; }
+.btn[aria-pressed="true"] { background: var(--ink); color: var(--bg); }
+.est { margin: 0; color: var(--muted); font-size: .9rem; }
+.error { margin: 0; color: var(--ink); font-weight: 550; text-align: center; }
+
+/* ---------- Notes strip ---------- */
+.notes {
+  display: flex; gap: 4px; width: 100%; max-width: 440px; margin-top: 14px;
+}
+.cell {
+  flex: 1 1 0; min-width: 0; text-align: center; padding: 6px 2px 5px;
+  border-bottom: 3px solid var(--line); border-radius: 6px 6px 0 0;
+}
+.cell .deg { display: block; font: 600 1.3rem/1.1 var(--display); }
+.cell .nm { display: block; font-size: .8rem; color: var(--muted); }
+.cell .oct { display: block; font-size: .68rem; color: var(--muted); line-height: 1; min-height: .68rem; }
+.cell.rest .deg { color: var(--muted); font-weight: 400; }
+.cell.on { background: var(--visited); border-bottom-color: var(--ink); }
+
+/* ---------- Quiz ---------- */
+.slots { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 10px; }
+.slot {
+  flex: 1 1 44px; max-width: 72px; min-height: 58px; padding: 4px 2px 6px; cursor: pointer;
+  border: 1.5px solid var(--line); border-bottom-width: 3px; border-radius: 9px;
+  background: var(--surface); color: var(--ink); text-align: center;
+}
+.slot .mark { display: block; font-size: .75rem; line-height: 1; min-height: .75rem; font-weight: 700; }
+.slot .deg { display: block; font: 600 1.45rem/1.15 var(--display); }
+.slot.empty .deg { color: var(--muted); font-weight: 400; }
+.slot.active { border-color: var(--ink); box-shadow: 0 0 0 2px var(--ink); }
+.slot.right { border-color: var(--turn); cursor: default; }
+.slot.right .mark { color: var(--turn); }
+.slot.wrong { border-color: var(--wrong); border-style: dashed; border-bottom-style: solid; }
+.slot.wrong .mark { color: var(--wrong); }
+.slot:disabled { cursor: default; opacity: 1; }
+.pad { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.pad button {
+  min-width: 46px; height: 46px; padding: 0 10px; border-radius: 10px; cursor: pointer;
+  border: 1.5px solid var(--ink); background: transparent; color: var(--ink);
+  font: 600 1.25rem/1 var(--display);
+}
+.pad button.erase { font: 550 .95rem/1 var(--ui); border-color: var(--line); }
+.pad button:disabled, .btn:disabled { opacity: .4; cursor: default; }
+.result { font-weight: 600; min-height: 1.45em; }
+
+/* ---------- Sheet music answer ---------- */
+.staff { margin-top: 14px; color: var(--ink); }
+.staff svg { display: block; max-width: 100%; height: auto; overflow: visible; }
+.staff .ln { stroke: currentColor; fill: none; stroke-linecap: round; stroke-linejoin: round; }
+.staff .fl { fill: currentColor; stroke: none; }
+.staff text { fill: currentColor; text-anchor: middle; }
+.staff .dg { font: 600 13px var(--display); }
+.staff .nm { font: 10px var(--ui); fill: var(--muted); }
+.staff .ts { font: 700 23px var(--display); }
+
+/* ---------- Done ---------- */
+.done { width: 100%; max-width: 440px; margin-top: 14px; }
+.done h2 { font: 600 1.25rem/1.2 var(--display); margin: 0 0 4px; }
+.done p { margin: 0 0 10px; }
+.done .btns { justify-content: flex-start; }
+.done .caption { color: var(--muted); font-size: .85rem; margin: 6px 0 0; }
+
+/* ---------- Settings ---------- */
+.settings { min-width: 0; }
+.group { border-top: 1.5px solid var(--line); padding: 12px 0 14px; }
+.group h2 { font: 600 1.05rem/1.2 var(--display); margin: 0 0 10px; }
+.row { display: grid; grid-template-columns: 7.6rem minmax(0, 1fr); gap: 6px 12px; align-items: center; margin-bottom: 10px; }
+.row:last-child { margin-bottom: 0; }
+.row > label, .row > .lbl { color: var(--muted); font-size: .92rem; }
+.ctl { min-width: 0; }
+.hint { margin: 5px 0 0; color: var(--muted); font-size: .85rem; }
+@media (max-width: 420px) {
+  .row { grid-template-columns: 1fr; gap: 4px; }
+}
+
+.seg { display: inline-flex; flex-wrap: wrap; border: 1.5px solid var(--line); border-radius: 9px; overflow: hidden; background: var(--surface); }
+.seg label { position: relative; }
+.seg input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: pointer; }
+.seg span { display: block; padding: 7px 13px; font-size: .92rem; }
+.seg input:checked + span { background: var(--ink); color: var(--bg); }
+.seg input:focus-visible + span { outline: 2px solid var(--focus); outline-offset: -3px; }
+.seg input:disabled { cursor: default; }
+.seg input:disabled + span { opacity: .5; }
+
+.slider { display: flex; align-items: center; gap: 8px; }
+.slider input[type="range"] { flex: 1 1 auto; min-width: 0; accent-color: var(--ink); }
+.slider output { min-width: 4.6rem; text-align: right; font-variant-numeric: tabular-nums; }
+.step {
+  width: 32px; height: 32px; flex: none; border-radius: 8px; cursor: pointer; line-height: 1;
+  border: 1.5px solid var(--line); background: var(--surface); font-size: 1.1rem;
+}
+.check { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.check input { width: 18px; height: 18px; margin: 3px 0 0; accent-color: var(--ink); flex: none; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<main class="app">
+  <header class="top">
+    <div>
+      <h1>Around the circle</h1>
+      <p class="lede">Hear a melody over a drone, play it back, and follow it through every key.</p>
+    </div>
+    <label class="inst">I play
+      <select id="inst"></select>
+    </label>
+  </header>
+
+  <div class="layout">
+    <section class="stage" aria-label="Practice">
+      <div class="circle" id="circle" data-dir="7">
+        <svg class="arrows" id="arrows" viewBox="0 0 100 100" aria-hidden="true"></svg>
+        <div role="radiogroup" aria-label="Direction around the circle">
+          <label class="dir ccw"><input type="radio" name="dir" value="5"><span>4ths</span></label>
+          <label class="dir cw"><input type="radio" name="dir" value="7" checked><span>5ths</span></label>
+        </div>
+        <div class="hub" id="hub" data-phase="idle">
+          <div class="hub-phase" id="phase">Starts in</div>
+          <div class="hub-key" id="keyName">B♭</div>
+          <div class="hub-sub" id="keySub"></div>
+          <div class="beats" id="beats" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
+        </div>
+      </div>
+      <p class="circle-help" id="circleHelp">Tap a key to leave it out. <button type="button" class="link" id="allKeys" hidden>Use all 12 keys</button></p>
+
+      <div class="transport">
+        <div id="startRow" class="transport" style="margin-top:0">
+          <button type="button" class="btn primary" id="start">Start practice</button>
+          <p class="est" id="est"></p>
+        </div>
+        <div id="runRow" class="btns" hidden>
+          <button type="button" class="btn" id="pause">Pause</button>
+          <button type="button" class="btn" id="next">Next key</button>
+          <button type="button" class="btn" id="hold" aria-pressed="false">Stay in this key</button>
+          <button type="button" class="btn" id="stop">Stop</button>
+        </div>
+        <p class="error" id="error" role="alert" hidden></p>
+      </div>
+
+      <div class="notes" id="notes" hidden></div>
+
+      <div class="done" id="done" hidden>
+        <h2>Which scale degrees did you hear?</h2>
+        <p id="doneSummary"></p>
+        <div class="slots" id="slots"></div>
+        <div class="pad" id="pad"></div>
+        <p class="result" id="result" role="status"></p>
+        <div class="btns">
+          <button type="button" class="btn" id="check" disabled>Check my answer</button>
+          <button type="button" class="btn" id="replay">Hear it again</button>
+          <button type="button" class="btn" id="reveal" hidden>Show the answer</button>
+          <button type="button" class="btn" id="again">New melody</button>
+        </div>
+        <div class="staff" id="answer" hidden></div>
+        <p class="caption" id="answerCaption" hidden></p>
+      </div>
+      <p class="sr" id="live" aria-live="polite"></p>
+    </section>
+
+    <section class="settings" aria-label="Settings">
+      <div class="group">
+        <h2>Practice</h2>
+        <div class="row">
+          <span class="lbl" id="lblLevel">Level</span>
+          <div class="ctl">
+            <div class="seg" role="radiogroup" aria-labelledby="lblLevel">
+              <label><input type="radio" name="level" value="1" checked><span>1</span></label>
+              <label><input type="radio" name="level" value="2"><span>2</span></label>
+              <label><input type="radio" name="level" value="3"><span>3</span></label>
+              <label><input type="radio" name="level" value="4"><span>4</span></label>
+              <label><input type="radio" name="level" value="5"><span>5</span></label>
+            </div>
+            <p class="hint" id="levelHint"></p>
+          </div>
+        </div>
+        <div class="row">
+          <label for="tempo">Tempo</label>
+          <div class="ctl slider">
+            <button type="button" class="step" id="tempoDown" aria-label="Slower">&minus;</button>
+            <input type="range" id="tempo" min="50" max="160" step="1" value="80">
+            <button type="button" class="step" id="tempoUp" aria-label="Faster">+</button>
+            <output id="tempoOut" for="tempo">80 bpm</output>
+          </div>
+        </div>
+        <div class="row">
+          <span class="lbl" id="lblFormat">Style</span>
+          <div class="ctl">
+            <div class="seg" role="radiogroup" aria-labelledby="lblFormat">
+              <label><input type="radio" name="format" value="echo" checked><span>Echo</span></label>
+              <label><input type="radio" name="format" value="together"><span>Together</span></label>
+            </div>
+            <p class="hint" id="formatHint"></p>
+          </div>
+        </div>
+        <div class="row">
+          <span class="lbl" id="lblReps">Each key</span>
+          <div class="ctl">
+            <div class="seg" role="radiogroup" aria-labelledby="lblReps">
+              <label><input type="radio" name="reps" value="1"><span>1 time</span></label>
+              <label><input type="radio" name="reps" value="2" checked><span>2 times</span></label>
+              <label><input type="radio" name="reps" value="3"><span>3</span></label>
+              <label><input type="radio" name="reps" value="4"><span>4</span></label>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Keys</h2>
+        <div class="row">
+          <label for="startKey">Start on</label>
+          <div class="ctl">
+            <select id="startKey"></select>
+            <p class="hint" id="orderHint"></p>
+          </div>
+        </div>
+      </div>
+
+      <div class="group">
+        <h2>Sound</h2>
+        <div class="row">
+          <span class="lbl" id="lblDrone">Drone</span>
+          <div class="ctl">
+            <div class="seg" role="radiogroup" aria-labelledby="lblDrone">
+              <label><input type="radio" name="fifth" value="0"><span>Root</span></label>
+              <label><input type="radio" name="fifth" value="1" checked><span>Root and 5th</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <span class="lbl" id="lblClick">Click</span>
+          <div class="ctl">
+            <div class="seg" role="radiogroup" aria-labelledby="lblClick">
+              <label><input type="radio" name="click" value="countin" checked><span>Count-in only</span></label>
+              <label><input type="radio" name="click" value="all"><span>Every beat</span></label>
+            </div>
+          </div>
+        </div>
+        <div class="row">
+          <label for="droneVol">Drone volume</label>
+          <div class="ctl slider"><input type="range" id="droneVol" min="0" max="100" value="60"></div>
+        </div>
+        <div class="row">
+          <label for="melVol">Melody volume</label>
+          <div class="ctl slider"><input type="range" id="melVol" min="0" max="100" value="80"></div>
+        </div>
+      </div>
+
+      <div class="group">
+        <label class="check"><input type="checkbox" id="showNotes"><span>Show the notes while I play</span></label>
+        <p class="hint">Leave this off to train your ear. Turning it on gives away the answer.</p>
+      </div>
+    </section>
+  </div>
+  <noscript><p>This practice tool needs JavaScript turned on.</p></noscript>
+</main>
+
+<script>
+(() => {
+'use strict';
+const $ = (id) => document.getElementById(id);
+
+/* =====================================================================
+   Music data
+   ===================================================================== */
+const NAMES   = ['C','D♭','D','E♭','E','F','G♭','G','A♭','A','B♭','B'];
+const LETTERS = ['C','D','E','F','G','A','B'];
+const NAT     = [0,2,4,5,7,9,11];           // pitch class of each natural letter
+const MAJOR   = [0,2,4,5,7,9,11];           // semitones of scale degrees 1-7
+const TONIC_LETTER = [0,1,1,2,2,3,4,4,5,5,6,6]; // letter index for each key name above
+const ACC = { '-1': '♭', '0': '', '1': '♯' };
+
+// shift = semitones added to concert pitch to get the written key.
+// center = middle of the sounding register the melody is placed in (MIDI).
+// staff = [lowest, highest, middle] written notes (MIDI) the sheet music aims to stay within.
+const INSTRUMENTS = [
+  { id: 'c',    label: 'C instruments: flute, oboe, mallets, piano', shift: 0, center: 67, staff: [60, 84, 72] },
+  { id: 'bb',   label: 'B♭: trumpet, clarinet, tenor sax',           shift: 2, center: 65, staff: [58, 81, 67] },
+  { id: 'eb',   label: 'E♭: alto sax, bari sax',                     shift: 9, center: 63, staff: [58, 81, 67] },
+  { id: 'f',    label: 'F: horn',                                    shift: 7, center: 60, staff: [55, 79, 65] },
+  { id: 'bass', label: 'Bass clef: trombone, euphonium, tuba, bass', shift: 0, center: 53, staff: [40, 62, 52] },
+];
+
+/* Melody notation (also the format a teacher will type later):
+     1-7        scale degree of the major scale
+     b3  #4     lowered / raised degree
+     5,  1'     octave below / above
+     :2  :.5    length in beats (default 1)
+     r          rest
+     |          bar line (ignored, for readability)                     */
+function parseTok(tok) {
+  const [p, d] = tok.split(':');
+  const dur = d ? parseFloat(d) : 1;
+  if (p === 'r') return { rest: true, dur };
+  const m = /^([b#]?)([1-7])([',]*)$/.exec(p);
+  if (!m) throw new Error('Bad melody token: ' + tok);
+  const alt = m[1] === 'b' ? -1 : m[1] === '#' ? 1 : 0;
+  const deg = +m[2];
+  let oct = 0;
+  for (const ch of m[3]) oct += ch === "'" ? 1 : -1;
+  return { deg, alt, oct, dur, semi: MAJOR[deg - 1] + alt + 12 * oct };
+}
+function parseMelody(src) {
+  const notes = src.replace(/\|/g, ' ').trim().split(/\s+/).map(parseTok);
+  const total = notes.reduce((s, n) => s + n.dur, 0);
+  const semis = notes.filter((n) => !n.rest).map((n) => n.semi);
+  return { src, notes, len: Math.max(4, Math.ceil(total / 4 - 1e-9) * 4), lo: Math.min(...semis), hi: Math.max(...semis) };
+}
+
+/* Each level builds a new melody at random every time practice starts.
+     scale     the notes it may use, low to high
+     rhythms   patterns to fill: x = a note, r = a rest, :n = length in beats
+     starts / ends   positions in the scale a melody may begin / finish on
+     moves     [distance in scale positions, how likely]
+     chords    when a melody skips twice or more in a row, those notes must all
+               belong to one of these chords (semitones above the home note)   */
+const R_SIMPLE = ['x x x x | x:2 r:2', 'x x x:2 | x:2 r:2', 'x:2 x x | x:2 r:2', 'x x x r | x:2 r:2'];
+const R_EIGHTHS = ['x x x x | x x x:2', 'x:.5 x:.5 x x x | x x x:2', 'x x:.5 x:.5 x x | x:2 x:2',
+                   'x x x x | x:.5 x:.5 x x:2', 'x:1.5 x:.5 x x | x x x:2'];
+const R_OFFBEAT = ['x:.5 x:.5 x:.5 x:.5 r:.5 x:.5 x', 'r:.5 x:.5 x:.5 x:.5 x:2'];
+const LEVELS = {
+  1: {
+    hint: 'Three notes: 1, 2 and 3.',
+    scale: ['1', '2', '3'],
+    rhythms: R_SIMPLE,
+    starts: [0, 0, 2], ends: [0], maxLeap: 2, minDistinct: 3, estLen: 8,
+    moves: [[-1, 4], [1, 4], [0, 1], [-2, 1], [2, 1]],
+    chords: [[0, 4, 7]],
+  },
+  2: {
+    hint: 'Five notes, 1 to 5, in steps and small skips.',
+    scale: ['1', '2', '3', '4', '5'],
+    rhythms: ['x x x x | x:2 r:2', 'x x x x | x x x:2', 'x x x:2 | x x x:2', 'x:2 x x | x x x:2'],
+    starts: [0, 0, 2, 4], ends: [0, 0, 2], maxLeap: 2, minDistinct: 3, estLen: 8,
+    moves: [[-1, 4], [1, 4], [-2, 2], [2, 2], [0, 1]],
+    chords: [[0, 4, 7]],
+  },
+  3: {
+    hint: 'Major pentatonic: 1, 2, 3, 5 and 6.',
+    scale: ['5,', '6,', '1', '2', '3', '5', '6', "1'"],
+    rhythms: R_EIGHTHS,
+    starts: [2, 2, 4, 5], ends: [2, 2, 4, 5, 7], maxLeap: 2, minDistinct: 4, estLen: 8,
+    moves: [[-1, 4], [1, 4], [-2, 2], [2, 2], [-3, 0.8], [3, 0.8], [0, 0.5]],
+    chords: [[0, 4, 7], [9, 0, 4]],
+  },
+  4: {
+    hint: 'Minor pentatonic: 1, ♭3, 4, 5 and ♭7.',
+    scale: ['5,', 'b7,', '1', 'b3', '4', '5', 'b7', "1'"],
+    rhythms: R_EIGHTHS.concat(R_OFFBEAT),
+    starts: [2, 2, 5, 3], ends: [2, 2, 5, 7], maxLeap: 2, minDistinct: 4, estLen: 7,
+    moves: [[-1, 4], [1, 4], [-2, 2], [2, 2], [-3, 0.8], [3, 0.8], [0, 0.5]],
+    chords: [[0, 3, 7, 10]],
+  },
+  5: {
+    hint: 'Chromatic: any of the 12 notes.',
+    scale: ['5,', 'b6,', '6,', 'b7,', '7,', '1', 'b2', '2', 'b3', '3', '4', '#4', '5', 'b6', '6', 'b7', '7', "1'"],
+    rhythms: R_EIGHTHS.concat(R_OFFBEAT),
+    starts: [5, 5, 9, 12], ends: [5, 5, 9, 12, 17], maxLeap: 4, minDistinct: 4, estLen: 7,
+    moves: [[-1, 4], [1, 4], [-2, 3], [2, 3], [-3, 1.2], [3, 1.2], [-4, 1.2], [4, 1.2], [-5, 0.6], [5, 0.6], [-7, 0.5], [7, 0.5], [0, 0.3]],
+    chords: [[0, 4, 7], [0, 3, 7], [5, 9, 0], [7, 11, 2]],
+    chromatic: true,     // notes outside the major scale move on by a half step; every melody has at least one
+  },
+};
+Object.values(LEVELS).forEach((L) => {
+  L.specs = L.scale.map(parseTok);
+  // Answer buttons for the quiz: each different degree the level can use, low to high.
+  const seen = new Set();
+  L.pad = L.specs.filter((n) => { const k = n.deg + ':' + n.alt; if (seen.has(k)) return false; seen.add(k); return true; })
+                 .map((n) => ({ deg: n.deg, alt: n.alt }))
+                 .sort((x, y) => (MAJOR[x.deg - 1] + x.alt) - (MAJOR[y.deg - 1] + y.alt));
+});
+
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+function weighted(opts) {
+  let r = Math.random() * opts.reduce((s, o) => s + o[1], 0);
+  for (const o of opts) { r -= o[1]; if (r <= 0) return o[0]; }
+  return opts[opts.length - 1][0];
+}
+
+function generateMelody(level, avoidSrc) {
+  const L = LEVELS[level], sp = L.specs;
+  const pcOf = (j) => ((sp[j].semi % 12) + 12) % 12;
+  const isSkip = (a, b) => Math.abs(sp[a].semi - sp[b].semi) >= 3;
+  const outside = (j) => sp[j].alt !== 0;
+  for (let attempt = 0; attempt < 400; attempt++) {
+    const rhythm = pick(L.rhythms).split(/\s+/).filter((t) => t !== '|');
+    const n = rhythm.filter((t) => t[0] === 'x').length;
+    const seq = [pick(L.starts)];
+    let ok = true;
+    for (let i = 1; i < n && ok; i++) {
+      const prev = seq[i - 1];
+      let opts = i === n - 1
+        ? L.ends.filter((e) => e !== prev && Math.abs(e - prev) <= L.maxLeap).map((e) => [e, 1])
+        : L.moves.map(([m, w]) => [prev + m, w]).filter(([j]) => j >= 0 && j < sp.length);
+      opts = opts.filter(([j]) => Math.abs(sp[j].semi - sp[prev].semi) !== 6);          // no tritone leaps
+      if (i >= 2 && seq[i - 2] === prev) opts = opts.filter(([j]) => j !== prev);     // no note three times running
+      if (i >= 2 && isSkip(seq[i - 2], prev)) {
+        // Already skipping: another skip is only allowed if the whole run spells out one chord.
+        const run = [prev];
+        for (let k = i - 2; k >= 0 && isSkip(seq[k], seq[k + 1]); k--) run.push(seq[k]);
+        opts = opts.filter(([j]) => !isSkip(prev, j) ||
+          L.chords.some((ch) => run.concat(j).every((x) => ch.includes(pcOf(x)))));
+      }
+      if (L.chromatic) {
+        if (outside(prev)) opts = opts.filter(([j]) => Math.abs(j - prev) === 1);
+        else opts = opts.map(([j, w]) => [j, outside(j) ? w * 0.7 : w]);
+      }
+      if (!opts.length) ok = false; else seq.push(weighted(opts));
+    }
+    if (!ok || new Set(seq).size < Math.min(L.minDistinct, n)) continue;
+    if (L.chromatic && !seq.some(outside)) continue;
+    let k = 0;
+    const src = rhythm.map((t) => (t[0] === 'x' ? L.scale[seq[k++]] + t.slice(1) : t)).join(' ');
+    if (src === avoidSrc) continue;
+    const mel = parseMelody(src);
+    mel.level = level;
+    return mel;
+  }
+  const mel = parseMelody('1 2 3 2 | 1:2 r:2'); mel.level = level; return mel;
+}
+
+// Letter and accidental for a scale degree in a given (written) key.
+const NAME_ACC = [0,-1,0,-1,0,0,-1,0,-1,0,-1,0];
+function spellNote(tonicPc, n) {
+  const li = (TONIC_LETTER[tonicPc] + n.deg - 1) % 7;
+  const target = (((tonicPc + MAJOR[n.deg - 1] + n.alt) % 12) + 12) % 12;
+  let acc = (((target - NAT[li]) % 12) + 12) % 12;
+  if (acc > 6) acc -= 12;
+  const plain = { li: TONIC_LETTER[target], acc: NAME_ACC[target] };
+  if (acc < -1 || acc > 1) return plain;                       // no double sharps or flats
+  // Altered notes read more easily as B/E/C/F than as C♭/F♭/B♯/E♯.
+  if (n.alt !== 0 && ((acc === -1 && (li === 0 || li === 3)) || (acc === 1 && (li === 6 || li === 2)))) return plain;
+  return { li, acc };
+}
+function spell(tonicPc, n) { const sn = spellNote(tonicPc, n); return LETTERS[sn.li] + ACC[sn.acc]; }
+
+const mtof = (m) => 440 * Math.pow(2, (m - 69) / 12);
+
+// Pick the octave that keeps the melody centred in the instrument's register.
+function tonicMidi(pc, mel, center) {
+  let best = 60 + pc, bestDist = Infinity;
+  for (const base of [36, 48, 60, 72]) {
+    const t = base + pc;
+    const dist = Math.abs(t + (mel.lo + mel.hi) / 2 - center);
+    if (dist < bestDist) { bestDist = dist; best = t; }
+  }
+  return best;
+}
+
+/* =====================================================================
+   Settings
+   ===================================================================== */
+const S = {
+  inst: 'c',
+  level: 1,
+  bpm: 80,
+  format: 'echo',       // 'echo' | 'together'
+  reps: 2,
+  stepSemis: 7,         // 7 = by 5ths, 5 = by 4ths
+  startPc: 10,          // concert B♭
+  fifth: true,
+  click: 'countin',     // 'countin' | 'all'
+  droneVol: 60,
+  melVol: 80,
+  showNotes: false,
+  hold: false,
+  enabled: new Set([0,1,2,3,4,5,6,7,8,9,10,11]),   // concert pitch classes
+};
+const inst = () => INSTRUMENTS.find((i) => i.id === S.inst);
+let currentMelody = null;      // made fresh each time practice starts
+const writtenPc = (pc) => (pc + inst().shift) % 12;
+const writtenName = (pc) => NAMES[writtenPc(pc)];
+
+// The lap: 12 positions from the start key, moving by the chosen interval.
+const pcAt = (k, startPc, step) => (startPc + k * step) % 12;
+function nextLapK(k, startPc, step) {
+  for (let j = k + 1; j < 12; j++) if (S.enabled.has(pcAt(j, startPc, step))) return j;
+  return null;
+}
+function lapOrder() {
+  const out = [];
+  for (let j = 0; j < 12; j++) { const pc = pcAt(j, S.startPc, S.stepSemis); if (S.enabled.has(pc)) out.push(pc); }
+  return out;
+}
+
+/* =====================================================================
+   Audio
+   ===================================================================== */
+const A = { ctx: null, voices: new Set(), drone: null, dronePc: null, silent: null };
+const volGain = (v, max) => Math.pow(v / 100, 2) * max;
+
+function initAudio() {
+  if (A.ctx) return true;
+  const AC = window.AudioContext || window.webkitAudioContext;
+  if (!AC) return false;
+  let ctx;
+  try { ctx = new AC({ latencyHint: 'interactive' }); } catch (e) { ctx = new AC(); }
+  A.ctx = ctx;
+  const comp = ctx.createDynamicsCompressor();
+  comp.threshold.value = -14; comp.knee.value = 12; comp.ratio.value = 4;
+  comp.attack.value = 0.005; comp.release.value = 0.2;
+  A.master = ctx.createGain(); A.master.gain.value = 0.9;
+  A.master.connect(comp); comp.connect(ctx.destination);
+  const bus = (g) => { const n = ctx.createGain(); n.gain.value = g; n.connect(A.master); return n; };
+  A.mel = bus(volGain(S.melVol, 1));
+  A.droneBus = bus(volGain(S.droneVol, 0.9));
+  A.clickBus = bus(0.5);
+  return true;
+}
+
+// iPhones mute web audio when the ring switch is on silent. This opts out of that.
+function unlockIOS() {
+  try { if (navigator.audioSession) { navigator.audioSession.type = 'playback'; return; } } catch (e) {}
+  const ios = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+              (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  if (!ios) return;
+  try {
+    if (!A.silent) {
+      const n = 4000, buf = new Uint8Array(44 + n), dv = new DataView(buf.buffer);
+      const w = (o, s) => { for (let i = 0; i < s.length; i++) buf[o + i] = s.charCodeAt(i); };
+      w(0, 'RIFF'); dv.setUint32(4, 36 + n, true); w(8, 'WAVE'); w(12, 'fmt ');
+      dv.setUint32(16, 16, true); dv.setUint16(20, 1, true); dv.setUint16(22, 1, true);
+      dv.setUint32(24, 8000, true); dv.setUint32(28, 8000, true);
+      dv.setUint16(32, 1, true); dv.setUint16(34, 8, true);
+      w(36, 'data'); dv.setUint32(40, n, true); buf.fill(128, 44);
+      const el = new Audio(URL.createObjectURL(new Blob([buf], { type: 'audio/wav' })));
+      el.loop = true; el.setAttribute('playsinline', '');
+      A.silent = el;
+    }
+    const p = A.silent.play(); if (p && p.catch) p.catch(() => {});
+  } catch (e) {}
+}
+function relockIOS() { try { if (A.silent) A.silent.pause(); } catch (e) {} }
+
+function setDrone(pc, t, fade) {
+  const ctx = A.ctx; fade = fade || 0.12;
+  const old = A.drone;
+  if (old) {
+    old.out.gain.cancelScheduledValues(t);
+    old.out.gain.setTargetAtTime(0, t, fade);
+    old.oscs.forEach((o) => { try { o.stop(t + fade * 8 + 0.1); } catch (e) {} });
+  }
+  A.drone = null; A.dronePc = pc;
+  if (pc == null) return;
+  const f = mtof(48 + pc);                       // C3 to B3
+  const out = ctx.createGain();
+  out.gain.value = 0; out.gain.setValueAtTime(0, t); out.gain.setTargetAtTime(1, t, 0.15);
+  out.connect(A.droneBus);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = 950; lp.Q.value = 0.4;
+  lp.connect(out);
+  const oscs = [];
+  const add = (type, freq, gain, detune, dest) => {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq; o.detune.value = detune;
+    const g = ctx.createGain(); g.gain.value = gain;
+    o.connect(g); g.connect(dest); o.start(t); oscs.push(o);
+  };
+  add('sawtooth', f, 0.13, -4, lp);
+  add('sawtooth', f, 0.13, 4, lp);
+  add('sine', f / 2, 0.28, 0, out);
+  add('triangle', f * 2, 0.05, 0, lp);
+  if (S.fifth) add('triangle', f * 1.5, 0.16, 0, lp);   // pure fifth (3:2) above the root
+  A.drone = { out, oscs };
+}
+
+function playNote(midi, t, dur) {
+  const ctx = A.ctx, f = mtof(midi);
+  const vca = ctx.createGain(); vca.connect(A.mel);
+  const lp = ctx.createBiquadFilter(); lp.type = 'lowpass'; lp.frequency.value = Math.min(7000, f * 6);
+  lp.connect(vca);
+  const env = ctx.createGain(); env.gain.value = 0; env.connect(lp);
+  const len = Math.max(0.09, dur * 0.88), end = t + len, stopAt = end + 0.3;
+  env.gain.setValueAtTime(0, t);
+  env.gain.linearRampToValueAtTime(0.55, t + 0.012);
+  env.gain.setTargetAtTime(0.36, t + 0.012, 0.14);
+  env.gain.setTargetAtTime(0, end, 0.03);
+  const oscs = [];
+  const add = (type, freq, gain) => {
+    const o = ctx.createOscillator(); o.type = type; o.frequency.value = freq;
+    const g = ctx.createGain(); g.gain.value = gain;
+    o.connect(g); g.connect(env); o.start(t); o.stop(stopAt); oscs.push(o);
+  };
+  add('triangle', f, 1);
+  add('sine', f * 2, 0.18);
+  add('sawtooth', f, 0.06);
+  const v = { vca, oscs };
+  A.voices.add(v);
+  oscs[0].onended = () => { A.voices.delete(v); try { vca.disconnect(); } catch (e) {} };
+}
+
+function killNotes() {
+  const now = A.ctx.currentTime;
+  A.voices.forEach((v) => {
+    v.vca.gain.setTargetAtTime(0, now, 0.01);
+    v.oscs.forEach((o) => { try { o.stop(now + 0.08); } catch (e) {} });
+  });
+}
+
+function playClick(t, accent) {
+  const ctx = A.ctx;
+  const o = ctx.createOscillator(); o.type = 'sine'; o.frequency.value = accent ? 1568 : 1047;
+  const g = ctx.createGain();
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(accent ? 0.7 : 0.45, t + 0.002);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + 0.05);
+  o.connect(g); g.connect(A.clickBus); o.start(t); o.stop(t + 0.07);
+}
+
+/* =====================================================================
+   Engine: schedules a few moments ahead on the audio clock
+   ===================================================================== */
+const LOOKAHEAD = 0.18;      // seconds
+const E = { running: false };
+let uiQueue = [];
+
+function buildKeySteps(pc, settle) {
+  const mel = E.mel = currentMelody;
+  const tonic = tonicMidi(pc, mel, inst().center);
+  const echo = S.format === 'echo', reps = S.reps;
+  const steps = [];
+  const beats = (ev, len, countin) => {
+    for (let b = 0; b < len; b++) ev.push({ beat: b, type: 'beat', idx: b % 4, countin });
+  };
+  if (settle) {
+    const ev = [
+      { beat: 0, type: 'drone', pc },
+      { beat: 0, type: 'ui', ui: { phase: 'newkey', pc, first: E.visited.length === 1 } },
+    ];
+    beats(ev, 4, true);
+    steps.push({ len: 4, events: ev });
+  }
+  for (let r = 1; r <= reps; r++) {
+    const phase = echo || (r === 1 && reps > 1) ? 'listen' : 'along';
+    const ev = [{ beat: 0, type: 'ui', ui: { phase, pc, rep: r, reps } }];
+    let b = 0;
+    mel.notes.forEach((n, i) => {
+      if (!n.rest) ev.push({ beat: b, type: 'note', midi: tonic + n.semi, dur: n.dur, i });
+      b += n.dur;
+    });
+    beats(ev, mel.len, false);
+    ev.sort((x, y) => x.beat - y.beat);
+    steps.push({ len: mel.len, events: ev });
+    if (echo) {
+      const rv = [{ beat: 0, type: 'ui', ui: { phase: 'turn', pc, rep: r, reps } }];
+      beats(rv, mel.len, false);
+      steps.push({ len: mel.len, events: rv });
+    }
+  }
+  return steps;
+}
+
+function nextStep() {
+  if (E.keySteps.length) return E.keySteps.shift();
+  if (E.visited.length && S.hold && !E.skipHold) {
+    E.keySteps = buildKeySteps(E.pc, false);
+    return E.keySteps.shift();
+  }
+  E.skipHold = false;
+  const k = nextLapK(E.lapK, E.startPc, E.step7);
+  if (k === null) return null;
+  E.lapK = k;
+  E.pc = pcAt(k, E.startPc, E.step7);
+  E.visited.push(E.pc);
+  E.keySteps = buildKeySteps(E.pc, true);
+  return E.keySteps.shift();
+}
+
+function pushUI(t, fn) { uiQueue.push({ t, fn }); }
+
+function fire(ev, t, spb) {
+  switch (ev.type) {
+    case 'drone': setDrone(ev.pc, t); break;
+    case 'beat':
+      if (ev.countin || S.click === 'all') playClick(t, ev.idx === 0);
+      pushUI(t, () => pulse(ev.idx));
+      break;
+    case 'note':
+      playNote(ev.midi, t, ev.dur * spb);
+      pushUI(t, () => highlightNote(ev.i));
+      break;
+    case 'ui': pushUI(t, () => applyUI(ev.ui)); break;
+  }
+}
+
+function tick() {
+  if (!E.running || E.ending) return;
+  const now = A.ctx.currentTime;
+  if (E.skip) {
+    E.skip = false; E.skipHold = true;
+    killNotes();
+    E.keySteps = []; E.cur = null;
+    E.cursorTime = now + 0.08; E.cursorBeat = 0;
+  }
+  for (let guard = 0; guard < 400; guard++) {
+    if (!E.cur) {
+      E.cur = nextStep();
+      if (!E.cur) { finish(Math.max(E.cursorTime, now)); return; }
+      E.i = 0; E.cursorBeat = 0;
+    }
+    const spb = 60 / S.bpm;
+    const atEnd = E.i >= E.cur.events.length;
+    const beat = atEnd ? E.cur.len : E.cur.events[E.i].beat;
+    let t = E.cursorTime + (beat - E.cursorBeat) * spb;
+    if (t > now + LOOKAHEAD) return;
+    if (t < now - 0.05) t = now + 0.05;        // the tab was asleep; pick up from here
+    if (atEnd) { E.cur = null; }
+    else { fire(E.cur.events[E.i], t, spb); E.i++; }
+    E.cursorTime = t; E.cursorBeat = beat;
+  }
+}
+
+function finish(t) {
+  E.ending = true;
+  ticker.stop();
+  setDrone(null, t, 0.4);
+  pushUI(t + 0.4, showDone);
+}
+
+// A worker timer keeps ticking when the tab is in the background; falls back to setInterval.
+const ticker = (() => {
+  let active = false, id = null, worker = null;
+  const fallback = () => { worker = null; if (active && id == null) id = setInterval(tick, 25); };
+  try {
+    const src = 'let i=null;onmessage=function(e){clearInterval(i);i=null;if(e.data==="start")i=setInterval(function(){postMessage(0)},25)}';
+    worker = new Worker(URL.createObjectURL(new Blob([src], { type: 'application/javascript' })));
+    worker.onmessage = tick;
+    worker.onerror = (e) => { if (e && e.preventDefault) e.preventDefault(); fallback(); };
+  } catch (e) { worker = null; }
+  return {
+    start() { active = true; if (worker) worker.postMessage('start'); else if (id == null) id = setInterval(tick, 25); },
+    stop() { active = false; if (worker) worker.postMessage('stop'); if (id != null) { clearInterval(id); id = null; } },
+  };
+})();
+
+function frame() {
+  if (!E.running) return;
+  tick();
+  const now = A.ctx.currentTime - (A.ctx.outputLatency || 0);
+  while (uiQueue.length && uiQueue[0].t <= now) uiQueue.shift().fn();
+  if (E.running) requestAnimationFrame(frame);
+}
+
+function start() {
+  if (!initAudio()) {
+    showError('This browser cannot play the sounds. Try a current version of Chrome, Edge, Safari or Firefox.');
+    return;
+  }
+  showError('');
+  cancelReplay();
+  unlockIOS();
+  const begin = () => {
+    if (E.running) return;
+    currentMelody = generateMelody(S.level, currentMelody && currentMelody.src);
+    Object.assign(E, {
+      notesShown: S.showNotes,
+      running: true, ending: false, paused: false, skip: false, skipHold: false,
+      startPc: S.startPc, step7: S.stepSemis, lapK: -1, pc: null, visited: [],
+      keySteps: [], cur: null, i: 0, cursorBeat: 0, cursorTime: A.ctx.currentTime + 0.15,
+    });
+    uiQueue = [];
+    U.active = true; U.pc = null; U.visited = new Set(); U.finished = false; U.lastUI = null;
+    setHold(false);
+    setRunningUI(true);
+    ticker.start();
+    requestAnimationFrame(frame);
+  };
+  const p = A.ctx.resume();
+  if (p && p.then) p.then(begin, begin); else begin();
+}
+
+function stop() {
+  if (!A.ctx) return;
+  const wasPaused = E.paused;
+  ticker.stop();
+  E.running = false; E.ending = false; E.paused = false;
+  uiQueue = [];
+  const quiet = () => { killNotes(); setDrone(null, A.ctx.currentTime, 0.04); };
+  if (wasPaused) A.ctx.resume().then(quiet, quiet); else quiet();
+  relockIOS();
+  U.active = false; U.pc = null; U.visited = new Set(); U.finished = false;
+  setRunningUI(false);
+  showIdle();
+}
+
+function togglePause() {
+  if (!E.running) return;
+  if (E.paused) {
+    E.paused = false; unlockIOS(); A.ctx.resume();
+    $('pause').textContent = 'Pause';
+    if (U.lastUI) applyUI(U.lastUI); else $('phase').textContent = 'Get ready';
+  } else {
+    E.paused = true; A.ctx.suspend();
+    $('pause').textContent = 'Resume';
+    $('phase').textContent = 'Paused';
+  }
+}
+
+/* =====================================================================
+   Interface
+   ===================================================================== */
+const U = { active: false, pc: null, visited: new Set(), finished: false, lastUI: null };
+const hub = $('hub'), circle = $('circle');
+const keyBtns = [];
+
+// Curved arrows in the top corners: clockwise for 5ths, counter-clockwise for 4ths.
+function buildArrows() {
+  const R = 55, a1 = 29, a2 = 60, f = (n) => n.toFixed(2);
+  const pt = (deg) => { const a = deg * Math.PI / 180; return [50 + R * Math.sin(a), 50 - R * Math.cos(a)]; };
+  const arrow = (sign, cls) => {
+    const [x1, y1] = pt(sign * a1), [x2, y2] = pt(sign * a2);
+    const a = sign * a2 * Math.PI / 180;
+    const dx = sign * Math.cos(a), dy = sign * Math.sin(a);     // direction of travel at the tip
+    const nx = Math.sin(a), ny = -Math.cos(a);                  // pointing away from the centre
+    const wing = (k) => f(x2 - 4 * dx + k * 2.3 * nx) + ' ' + f(y2 - 4 * dy + k * 2.3 * ny);
+    return '<path class="' + cls + '" d="M' + f(x1) + ' ' + f(y1) + ' A' + R + ' ' + R + ' 0 0 ' + (sign > 0 ? 1 : 0) + ' ' +
+      f(x2) + ' ' + f(y2) + ' M' + wing(1) + ' L' + f(x2) + ' ' + f(y2) + ' L' + wing(-1) + '"/>';
+  };
+  $('arrows').innerHTML = arrow(1, 'arc-cw') + arrow(-1, 'arc-ccw');
+}
+
+function buildCircle() {
+  for (let pc = 0; pc < 12; pc++) {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'key';
+    b.addEventListener('click', () => toggleKey(pc));
+    circle.insertBefore(b, hub);
+    keyBtns[pc] = b;
+  }
+}
+
+// Keys sit where a student expects them: their written C at the top, 5ths clockwise.
+function layoutCircle() {
+  keyBtns.forEach((b, pc) => {
+    const w = writtenPc(pc);
+    const ang = ((((w * 7) % 12) * 30) - 90) * Math.PI / 180;
+    b.style.left = (50 + 41 * Math.cos(ang)).toFixed(3) + '%';
+    b.style.top = (50 + 41 * Math.sin(ang)).toFixed(3) + '%';
+    b.textContent = NAMES[w];
+  });
+}
+
+function upcomingPc() {
+  if (!U.active) return lapOrder()[0];
+  if (U.finished || U.pc == null || S.hold) return null;
+  for (let k = 0; k < 12; k++) {
+    if (pcAt(k, E.startPc, E.step7) === U.pc) {
+      const n = nextLapK(k, E.startPc, E.step7);
+      return n === null ? null : pcAt(n, E.startPc, E.step7);
+    }
+  }
+  return null;
+}
+
+function paintCircle() {
+  const next = upcomingPc();
+  const transposing = inst().shift !== 0;
+  keyBtns.forEach((b, pc) => {
+    const on = S.enabled.has(pc);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.classList.toggle('cur', U.active && !U.finished && U.pc === pc);
+    b.classList.toggle('visited', U.active && U.visited.has(pc) && (U.finished || U.pc !== pc));
+    b.classList.toggle('next', next === pc);
+    b.setAttribute('aria-label',
+      'Key of ' + writtenName(pc) + (transposing ? ', concert ' + NAMES[pc] : '') + (on ? ', included' : ', left out'));
+  });
+  $('allKeys').hidden = S.enabled.size === 12;
+}
+
+function toggleKey(pc) {
+  if (S.enabled.has(pc)) {
+    if (S.enabled.size === 1) { flashHelp('Keep at least one key in.'); return; }
+    S.enabled.delete(pc);
+  } else S.enabled.add(pc);
+  refreshKeys();
+}
+
+let helpTimer = null;
+const HELP_TEXT = 'Tap a key to leave it out. ';
+function flashHelp(msg) {
+  const el = $('circleHelp');
+  el.firstChild.textContent = msg + ' ';
+  clearTimeout(helpTimer);
+  helpTimer = setTimeout(() => { el.firstChild.textContent = HELP_TEXT; }, 2500);
+}
+
+function concertNote(pc) { return inst().shift !== 0 ? 'concert ' + NAMES[pc] : ''; }
+
+function showIdle() {
+  if (U.active) return;
+  const first = lapOrder()[0];
+  hub.dataset.phase = 'idle';
+  $('phase').textContent = 'Starts in';
+  $('keyName').textContent = writtenName(first);
+  $('keySub').textContent = concertNote(first);
+  $('notes').hidden = true;
+}
+
+function refreshKeys() {
+  paintCircle();
+  const order = lapOrder();
+  $('orderHint').textContent = 'Order: ' + order.map(writtenName).join(', ');
+  updateEstimate();
+  showIdle();
+}
+
+function updateEstimate() {
+  const n = lapOrder().length;
+  const beats = n * (4 + S.reps * LEVELS[S.level].estLen * (S.format === 'echo' ? 2 : 1));
+  const secs = beats * 60 / S.bpm;
+  const time = secs < 50 ? 'under a minute' : 'about ' + Math.max(1, Math.round(secs / 60)) + ' min';
+  $('est').textContent = n + (n === 1 ? ' key, ' : ' keys, ') + time;
+  $('levelHint').textContent = LEVELS[S.level].hint;
+  $('formatHint').textContent = S.format === 'echo'
+    ? 'Listen, then play it back in the gap.'
+    : 'The melody repeats. Play along with it.';
+}
+
+function buildStartOptions() {
+  const sel = $('startKey'), sh = inst().shift;
+  sel.innerHTML = '';
+  for (let w = 0; w < 12; w++) {
+    const pc = (w - sh + 12) % 12;
+    const o = document.createElement('option');
+    o.value = pc;
+    o.textContent = NAMES[w] + (sh ? ' (concert ' + NAMES[pc] + ')' : '');
+    sel.appendChild(o);
+  }
+  sel.value = S.startPc;
+}
+
+function renderNotes(el, mel, pc) {
+  const tonic = writtenPc(pc);
+  el.innerHTML = '';
+  mel.notes.forEach((n, i) => {
+    const c = document.createElement('div');
+    c.className = 'cell' + (n.rest ? ' rest' : '');
+    c.style.flexGrow = n.dur;
+    c.dataset.i = i;
+    const deg = document.createElement('span'); deg.className = 'deg';
+    const oct = document.createElement('span'); oct.className = 'oct';
+    const nm = document.createElement('span'); nm.className = 'nm';
+    if (n.rest) { deg.textContent = '–'; nm.textContent = 'rest'; }
+    else {
+      deg.textContent = ACC[n.alt] + n.deg;
+      oct.textContent = n.oct > 0 ? 'high' : n.oct < 0 ? 'low' : '';
+      nm.textContent = spell(tonic, n);
+    }
+    c.append(oct, deg, nm);
+    el.appendChild(c);
+  });
+}
+
+/* ---------- Sheet music for the answer ---------- */
+const KEYSIG = [0, -5, 2, -3, 4, -1, -6, 1, -4, 3, -2, 5];        // sharps (+) or flats (-) for each key
+const SHARP_ORDER = [3, 0, 4, 1, 5, 2, 6], FLAT_ORDER = [6, 2, 5, 1, 4, 0, 3];   // letters, in key-signature order
+const SHARP_POS = [8, 5, 9, 6, 3, 7, 4], FLAT_POS = [4, 7, 3, 6, 2, 5, 1];       // treble staff, 0 = bottom line
+const NOTE_W = { 0.5: 22, 1: 30, 1.5: 38, 2: 44 };
+const r1 = (v) => Math.round(v * 10) / 10;
+
+function accidentalSvg(acc, x, y) {
+  const t = 'transform="translate(' + r1(x) + ' ' + r1(y) + ')"';
+  if (acc < 0) return '<path class="ln" stroke-width="1.3" ' + t + ' d="M-3 -13V4.5M-3 -2C0 -6 5 -4.5 3.6 -0.5C2.4 2.4 -1 3.4 -3 4.5"/>';
+  if (acc > 0) return '<g ' + t + '><path class="ln" stroke-width="1" d="M-2 -8.5V9.5M2 -9.5V8.5"/>' +
+    '<path class="ln" stroke-width="2.3" stroke-linecap="butt" d="M-4.6 -1.7L4.6 -4.3M-4.6 4.3L4.6 1.7"/></g>';
+  return '<g ' + t + '><path class="ln" stroke-width="1" d="M-2.4 -10V4.6M2.4 -4.6V10"/>' +
+    '<path class="ln" stroke-width="2.3" stroke-linecap="butt" d="M-2.4 -2.4L2.4 -4.2M-2.4 4.2L2.4 2.4"/></g>';
+}
+
+function clefSvg(bass, x) {
+  const t = 'transform="translate(' + x + ' 0)"';
+  if (bass) return '<g ' + t + '><circle class="fl" cx="-7" cy="10" r="2.7"/>' +
+    '<path class="ln" stroke-width="2" d="M-7 10C-7.5 3 -1 -0.5 3.5 0.5C9.5 1.5 11.5 8 10 14.5C8 23.5 -0.5 31 -8.5 35"/>' +
+    '<circle class="fl" cx="16" cy="5" r="1.7"/><circle class="fl" cx="16" cy="15" r="1.7"/></g>';
+  return '<g ' + t + '><path class="ln" stroke-width="1.7" d="M-2 31C-2 26 4 24.5 6.5 28C9.5 32.5 6 40 -1 40' +
+    'C-7 40 -10.5 34 -10 28.5C-9.5 21 -2 15 2 9C5.5 3.5 7 -3 5 -8.5C3.8 -12 0.5 -12.5 -0.8 -9' +
+    'C-2.5 -4 -1 6 0 14L3.5 44C4.5 50 -1 53 -5 49.5"/><circle class="fl" cx="-4.3" cy="47.2" r="2"/></g>';
+}
+
+function renderStaff(el, mel, pc) {
+  const bass = inst().id === 'bass';
+  const key = writtenPc(pc);
+  const base = bass ? 18 : 30;                              // staff step of the bottom line (G2 or E4)
+  // Choose the octave that stays inside the instrument's comfortable written range.
+  const st = inst().staff;
+  let tonic = 60 + key, bestCost = Infinity;
+  for (const o of [24, 36, 48, 60, 72, 84]) {
+    const lo = o + key + mel.lo, hi = o + key + mel.hi;
+    const cost = (Math.max(0, st[0] - lo) + Math.max(0, hi - st[1])) * 10 + Math.abs((lo + hi) / 2 - st[2]);
+    if (cost < bestCost) { bestCost = cost; tonic = o + key; }
+  }
+  const ks = KEYSIG[key];
+  const sigAcc = [0, 0, 0, 0, 0, 0, 0];
+  for (let i = 0; i < Math.abs(ks); i++) sigAcc[(ks > 0 ? SHARP_ORDER : FLAT_ORDER)[i]] = ks > 0 ? 1 : -1;
+  const Y = (p) => 40 - p * 5;
+  const g = [];
+  let x = 8;
+  g.push(clefSvg(bass, x + 10)); x += bass ? 34 : 28;
+  for (let i = 0; i < Math.abs(ks); i++) {
+    const p = (ks > 0 ? SHARP_POS : FLAT_POS)[i] - (bass ? 2 : 0);
+    g.push(accidentalSvg(ks > 0 ? 1 : -1, x + 5, Y(p))); x += 9;
+  }
+  if (ks) x += 4;
+  g.push('<text class="ts" x="' + (x + 7) + '" y="19">4</text><text class="ts" x="' + (x + 7) + '" y="39">4</text>');
+  x += 24;
+
+  // First pass: place everything left to right.
+  const ev = [];
+  let beat = 0, barAcc = {};
+  mel.notes.forEach((n) => {
+    if (beat > 0 && beat % 4 === 0) { g.push('<path class="ln" stroke-width="1" d="M' + (x - 4) + ' 0V40"/>'); x += 8; barAcc = {}; }
+    const e = { n, beat };
+    if (!n.rest) {
+      const sn = spellNote(key, n);
+      const oct = Math.round((tonic + n.semi - NAT[sn.li] - sn.acc) / 12) - 1;
+      const step = oct * 7 + sn.li;
+      e.p = step - base; e.y = Y(e.p); e.name = LETTERS[sn.li] + ACC[sn.acc];
+      const cur = step in barAcc ? barAcc[step] : sigAcc[sn.li];
+      if (sn.acc !== cur) { e.acc = sn.acc; barAcc[step] = sn.acc; x += 10; }
+    }
+    e.x = x + 8;
+    ev.push(e);
+    x += NOTE_W[n.dur] || 30;
+    beat += n.dur;
+  });
+  const endX = x + 4;
+
+  // Second pass: draw rests, noteheads, stems, flags and beams.
+  let top = -16, bottom = 54;
+  const stemOf = (e, up, endY) => {
+    const sx = e.x + (up ? 5.3 : -5.3);
+    g.push('<path class="ln" stroke-width="1.2" d="M' + r1(sx) + ' ' + r1(e.y + (up ? -1.5 : 1.5)) + 'V' + r1(endY) + '"/>');
+    top = Math.min(top, endY - 2, e.y - 8); bottom = Math.max(bottom, endY + 2, e.y + 8);
+    return sx;
+  };
+  for (let i = 0; i < ev.length; i++) {
+    const e = ev[i], n = e.n;
+    if (n.rest) {
+      if (n.dur >= 2) g.push('<rect class="fl" x="' + (e.x - 6) + '" y="15.5" width="12" height="4.5"/>');
+      else if (n.dur >= 1) g.push('<path class="ln" stroke-width="2.2" d="M' + (e.x - 2.5) + ' 8L' + (e.x + 3) + ' 15L' + (e.x - 2) + ' 21L' + (e.x + 3) + ' 27C' + (e.x - 3) + ' 25 ' + (e.x - 4.5) + ' 30 ' + (e.x - 0.5) + ' 33"/>');
+      else g.push('<circle class="fl" cx="' + (e.x - 2.5) + '" cy="13.5" r="2"/><path class="ln" stroke-width="1.4" d="M' + (e.x - 2.5) + ' 14.5Q' + (e.x + 1.5) + ' 16.5 ' + (e.x + 4) + ' 12L' + e.x + ' 30"/>');
+      continue;
+    }
+    for (let p = -2; p >= e.p; p -= 2) g.push('<path class="ln" stroke-width="1" d="M' + (e.x - 9.5) + ' ' + Y(p) + 'H' + (e.x + 9.5) + '"/>');
+    for (let p = 10; p <= e.p; p += 2) g.push('<path class="ln" stroke-width="1" d="M' + (e.x - 9.5) + ' ' + Y(p) + 'H' + (e.x + 9.5) + '"/>');
+    if (e.acc !== undefined) g.push(accidentalSvg(e.acc, e.x - 13, e.y));
+    const rot = ' transform="rotate(-22 ' + e.x + ' ' + e.y + ')"';
+    g.push(n.dur >= 2
+      ? '<ellipse class="ln" stroke-width="1.7" cx="' + e.x + '" cy="' + e.y + '" rx="5.1" ry="3.5"' + rot + '/>'
+      : '<ellipse class="fl" cx="' + e.x + '" cy="' + e.y + '" rx="5.8" ry="4.1"' + rot + '/>');
+    if (n.dur === 1.5) g.push('<circle class="fl" cx="' + (e.x + 10) + '" cy="' + (e.p % 2 === 0 ? e.y - 2.5 : e.y) + '" r="1.5"/>');
+    if (e.beamed) continue;                                  // stem already drawn with its partner
+    const nx = ev[i + 1];
+    if (n.dur === 0.5 && Number.isInteger(e.beat) && nx && !nx.n.rest && nx.n.dur === 0.5) {
+      // Two eighth notes on one beat share a beam.
+      const up = (e.p + nx.p) / 2 < 4;
+      const slope = Math.max(-6, Math.min(6, nx.y - e.y));
+      const far = up ? Math.min(e.y, nx.y) - 30 : Math.max(e.y, nx.y) + 30;
+      const y1 = far + (up ? Math.max(0, -slope) : Math.min(0, -slope));
+      const y2 = y1 + slope;
+      const x1 = stemOf(e, up, y1), x2 = stemOf(nx, up, y2), th = up ? 4 : -4;
+      g.push('<path class="fl" d="M' + r1(x1) + ' ' + r1(y1) + 'L' + r1(x2) + ' ' + r1(y2) + 'V' + r1(y2 + th) + 'L' + r1(x1) + ' ' + r1(y1 + th) + 'Z"/>');
+      nx.beamed = true;
+    } else {
+      const up = e.p < 4, endY = e.y + (up ? -30 : 30);
+      const sx = stemOf(e, up, endY);
+      if (n.dur === 0.5) g.push('<path class="ln" stroke-width="1.6" d="M' + r1(sx) + ' ' + r1(endY) + (up ? 'c1 8 9 9 6.5 19' : 'c1 -8 9 -9 6.5 -19') + '"/>');
+    }
+  }
+  // Staff lines, closing bar line, and the scale degree and note name under each note.
+  for (let i = 0; i < 5; i++) g.push('<path class="ln" stroke-width="0.9" d="M0 ' + i * 10 + 'H' + (endX + 5) + '"/>');
+  g.push('<path class="ln" stroke-width="1" d="M' + endX + ' 0V40"/><path class="ln" stroke-width="3.2" stroke-linecap="butt" d="M' + (endX + 4.4) + ' -0.4V40.4"/>');
+  const labelY = bottom + 14;
+  ev.forEach((e) => {
+    if (e.n.rest) return;
+    g.push('<text class="dg" x="' + e.x + '" y="' + r1(labelY) + '">' + ACC[e.n.alt] + e.n.deg + '</text>' +
+           '<text class="nm" x="' + e.x + '" y="' + r1(labelY + 13) + '">' + e.name + '</text>');
+  });
+  const W = endX + 8, y0 = top - 4, H = labelY + 20 - y0;
+  el.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 ' + r1(y0) + ' ' + W + ' ' + r1(H) + '" width="' + Math.round(W * 1.25) +
+    '" role="img" aria-label="The melody written out in the key of ' + NAMES[key] + '">' + g.join('') + '</svg>';
+}
+
+function highlightNote(i) {
+  if (!S.showNotes) return;
+  $('notes').querySelectorAll('.cell').forEach((c) => c.classList.toggle('on', +c.dataset.i === i));
+}
+function clearHighlight() { $('notes').querySelectorAll('.cell.on').forEach((c) => c.classList.remove('on')); }
+
+const beatDots = Array.from($('beats').children);
+function pulse(idx) { beatDots.forEach((d, i) => d.classList.toggle('on', i === idx)); }
+
+const PHASE_TEXT = { listen: 'Listen', turn: 'Your turn', along: 'Play along' };
+function applyUI(u) {
+  U.lastUI = u;
+  const keyChanged = U.pc !== u.pc;
+  U.pc = u.pc; U.visited.add(u.pc);
+  hub.dataset.phase = u.phase;
+  $('phase').textContent = u.phase === 'newkey' ? (u.first ? 'Get ready' : 'New key') : PHASE_TEXT[u.phase];
+  $('keyName').textContent = writtenName(u.pc);
+  const rep = u.phase !== 'newkey' && u.reps > 1 ? u.rep + ' of ' + u.reps : '';
+  $('keySub').textContent = [concertNote(u.pc), rep].filter(Boolean).join(', ');
+  if (u.phase !== 'listen' && u.phase !== 'along') clearHighlight();
+  if (keyChanged || u.phase === 'newkey') {
+    renderNotes($('notes'), E.mel, u.pc);
+    $('live').textContent = 'Key of ' + writtenName(u.pc);
+    paintCircle();
+  }
+}
+
+function showDone() {
+  ticker.stop();
+  E.running = false; E.ending = false;
+  relockIOS();
+  U.finished = true;
+  const n = E.visited.length, mel = E.mel;
+  hub.dataset.phase = 'done';
+  $('phase').textContent = 'Lap complete';
+  $('keyName').textContent = n;
+  $('keySub').textContent = n === 1 ? 'key played' : 'keys played';
+  $('doneSummary').textContent = 'Level ' + mel.level + ', ' + n + (n === 1 ? ' key' : ' keys') + ' at ' + S.bpm + ' bpm.' +
+    (E.notesShown ? ' The notes were shown during practice.' : '') + ' Fill in each note, then check.';
+  $('runRow').hidden = true; $('notes').hidden = true;
+  $('done').hidden = false;
+  startQuiz(mel, E.visited[0]);
+  lockControls(false);
+  paintCircle();
+  $('live').textContent = 'Lap complete. Which scale degrees did you hear?';
+}
+
+/* ---------- Quiz: name the scale degrees before the answer is shown ---------- */
+const Q = { slots: [], active: 0, locked: true, firstTry: null, mel: null, pc: 0, mod: 0 };
+const degLabel = (v) => ACC[v.alt] + v.deg;
+
+function startQuiz(mel, pc) {
+  Q.mel = mel; Q.pc = pc; Q.locked = false; Q.firstTry = null; Q.active = 0;
+  const slotsEl = $('slots'); slotsEl.innerHTML = '';
+  Q.slots = [];
+  mel.notes.forEach((n) => {
+    if (n.rest) return;
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'slot';
+    const mark = document.createElement('span'); mark.className = 'mark';
+    const deg = document.createElement('span'); deg.className = 'deg';
+    b.append(mark, deg);
+    const slot = { note: n, value: null, state: '', el: b, mark, deg };
+    const i = Q.slots.length;
+    b.addEventListener('click', () => { if (!Q.locked && slot.state !== 'right') { Q.active = i; paintQuiz(); } });
+    Q.slots.push(slot); slotsEl.appendChild(b);
+  });
+  const pad = $('pad'); pad.innerHTML = '';
+  LEVELS[mel.level].pad.forEach((v) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.textContent = degLabel(v);
+    b.setAttribute('aria-label', 'Scale degree ' + (v.alt < 0 ? 'flat ' : v.alt > 0 ? 'sharp ' : '') + v.deg);
+    b.addEventListener('click', () => quizFill(v));
+    pad.appendChild(b);
+  });
+  const er = document.createElement('button');
+  er.type = 'button'; er.className = 'erase'; er.textContent = 'Erase';
+  er.addEventListener('click', quizErase);
+  pad.appendChild(er);
+  $('result').textContent = '';
+  $('answer').hidden = true; $('answerCaption').hidden = true;
+  $('reveal').hidden = true; $('check').hidden = false;
+  paintQuiz();
+}
+
+function paintQuiz() {
+  Q.slots.forEach((s, i) => {
+    s.el.className = 'slot' + (s.value ? '' : ' empty') + (s.state ? ' ' + s.state : '') +
+      (!Q.locked && i === Q.active ? ' active' : '');
+    s.deg.textContent = s.value ? degLabel(s.value) : '?';
+    s.mark.textContent = s.state === 'right' ? '✓' : s.state === 'wrong' ? '✗' : '';
+    s.el.disabled = Q.locked || s.state === 'right';
+    s.el.setAttribute('aria-label', 'Note ' + (i + 1) + ': ' +
+      (s.value ? 'scale degree ' + degLabel(s.value) : 'empty') +
+      (s.state === 'right' ? ', correct' : s.state === 'wrong' ? ', not correct' : ''));
+  });
+  $('pad').querySelectorAll('button').forEach((b) => { b.disabled = Q.locked; });
+  $('check').disabled = Q.locked || Q.slots.some((s) => !s.value) || !Q.slots.some((s) => s.state === '');
+}
+
+function quizFill(v) {
+  if (Q.locked) return;
+  const s = Q.slots[Q.active];
+  if (!s || s.state === 'right') return;
+  s.value = v; s.state = '';
+  const n = Q.slots.length;
+  for (let j = 1; j < n; j++) {
+    const i = (Q.active + j) % n, c = Q.slots[i];
+    if (c.state !== 'right' && (!c.value || c.state === 'wrong')) { Q.active = i; break; }
+  }
+  paintQuiz();
+}
+
+function quizErase() {
+  if (Q.locked) return;
+  let s = Q.slots[Q.active];
+  if (s && !s.value) {
+    for (let i = Q.active - 1; i >= 0; i--) if (Q.slots[i].state !== 'right') { Q.active = i; s = Q.slots[i]; break; }
+  }
+  if (s && s.state !== 'right') { s.value = null; s.state = ''; }
+  paintQuiz();
+}
+
+function showAnswer() {
+  Q.locked = true;
+  renderStaff($('answer'), Q.mel, Q.pc);
+  $('answer').hidden = false;
+  $('answerCaption').textContent = 'Written in the key of ' + writtenName(Q.pc) + ', where the lap started.';
+  $('answerCaption').hidden = false;
+  $('reveal').hidden = true; $('check').hidden = true;
+  paintQuiz();
+}
+
+function quizCheck() {
+  if (Q.locked || Q.slots.some((s) => !s.value)) return;
+  let right = 0;
+  Q.slots.forEach((s) => {
+    const ok = s.value.deg === s.note.deg && s.value.alt === s.note.alt;
+    s.state = ok ? 'right' : 'wrong';
+    if (ok) right++;
+  });
+  const n = Q.slots.length;
+  const first = Q.firstTry === null;
+  if (first) Q.firstTry = right;
+  const firstNote = first ? '' : ' First try: ' + Q.firstTry + ' of ' + n + '.';
+  if (right === n) {
+    $('result').textContent = (first ? 'All ' + n + ' correct on the first try.' : 'All ' + n + ' correct.' + firstNote);
+    showAnswer();
+    return;
+  }
+  $('result').textContent = right + ' of ' + n + ' correct.' + firstNote + ' Fix the ones marked ✗ and check again, or show the answer.';
+  Q.active = Q.slots.findIndex((s) => s.state === 'wrong');
+  $('reveal').hidden = false;
+  paintQuiz();
+}
+
+function quizReveal() {
+  const n = Q.slots.length;
+  $('result').textContent = 'First try: ' + Q.firstTry + ' of ' + n + ' correct. Here is the answer.';
+  showAnswer();
+}
+
+document.addEventListener('keydown', (e) => {
+  if ($('done').hidden || Q.locked || e.ctrlKey || e.metaKey || e.altKey) return;
+  if (/^(INPUT|SELECT|TEXTAREA)$/.test(e.target.tagName)) return;
+  if (/^[1-7]$/.test(e.key)) {
+    const pad = LEVELS[Q.mel.level].pad, d = +e.key;
+    const v = pad.find((p) => p.deg === d && p.alt === Q.mod) || pad.find((p) => p.deg === d && p.alt === 0) || pad.find((p) => p.deg === d);
+    Q.mod = 0;
+    if (v) { quizFill(v); e.preventDefault(); }
+  } else if (e.key === 'b' || e.key === '-') { Q.mod = -1; }
+  else if (e.key === '#' || e.key === '+') { Q.mod = 1; }
+  else if (e.key === 'Backspace') { quizErase(); e.preventDefault(); }
+});
+
+/* ---------- Hear it again: one more time through, in the first key ---------- */
+const R = { playing: false, timer: null };
+function replay() {
+  if (E.running || R.playing || !Q.mel || !initAudio()) return;
+  unlockIOS();
+  const go = () => {
+    if (E.running || R.playing) return;
+    const ctx = A.ctx, spb = 60 / S.bpm, mel = Q.mel;
+    const t0 = ctx.currentTime + 0.1;
+    const tonic = tonicMidi(Q.pc, mel, inst().center);
+    setDrone(Q.pc, t0);
+    let b = 2;                                   // two beats of drone first
+    mel.notes.forEach((n) => { if (!n.rest) playNote(tonic + n.semi, t0 + b * spb, n.dur * spb); b += n.dur; });
+    R.playing = true; $('replay').disabled = true;
+    R.timer = setTimeout(() => {
+      R.timer = null; R.playing = false; $('replay').disabled = false;
+      setDrone(null, A.ctx.currentTime, 0.3); relockIOS();
+    }, (2 + mel.len) * spb * 1000 + 300);
+  };
+  const p = A.ctx.resume();
+  if (p && p.then) p.then(go, go); else go();
+}
+function cancelReplay() {
+  if (R.timer) { clearTimeout(R.timer); R.timer = null; }
+  if (R.playing && A.ctx) { killNotes(); setDrone(null, A.ctx.currentTime, 0.04); }
+  R.playing = false; $('replay').disabled = false;
+}
+
+function setHold(on) {
+  S.hold = on;
+  $('hold').setAttribute('aria-pressed', on ? 'true' : 'false');
+  paintCircle();
+}
+
+function lockControls(lock) {
+  document.querySelectorAll('input[name="dir"], input[name="level"]').forEach((r) => { r.disabled = lock; });
+  $('startKey').disabled = lock;
+}
+
+function setRunningUI(running) {
+  $('startRow').hidden = running;
+  $('runRow').hidden = !running;
+  $('done').hidden = true;
+  $('pause').textContent = 'Pause';
+  $('notes').hidden = !(running && S.showNotes);
+  lockControls(running);
+  beatDots.forEach((d) => d.classList.remove('on'));
+  if (running) {
+    hub.dataset.phase = 'newkey';
+    $('phase').textContent = 'Get ready';
+  }
+  paintCircle();
+}
+
+function showError(msg) { const el = $('error'); el.textContent = msg; el.hidden = !msg; }
+
+/* ---------- Wiring ---------- */
+function radios(name, fn) {
+  document.querySelectorAll('input[name="' + name + '"]').forEach((r) =>
+    r.addEventListener('change', () => { if (r.checked) fn(r.value); }));
+}
+function setBus(node, value) {
+  if (A.ctx) node().gain.setTargetAtTime(value, A.ctx.currentTime, 0.02);
+}
+
+function init() {
+  const instSel = $('inst');
+  INSTRUMENTS.forEach((i) => { const o = document.createElement('option'); o.value = i.id; o.textContent = i.label; instSel.appendChild(o); });
+  instSel.value = S.inst;
+
+  buildArrows(); buildCircle(); layoutCircle(); buildStartOptions(); refreshKeys();
+
+  instSel.addEventListener('change', () => {
+    S.inst = instSel.value;
+    layoutCircle(); buildStartOptions(); refreshKeys();
+    if (U.active && !U.finished && U.lastUI) {
+      applyUI(U.lastUI);
+      renderNotes($('notes'), E.mel, U.pc);
+      if (E.paused) $('phase').textContent = 'Paused';
+    }
+  });
+
+  const tempo = $('tempo');
+  const setTempo = (v) => {
+    S.bpm = Math.min(160, Math.max(50, Math.round(v)));
+    tempo.value = S.bpm; $('tempoOut').textContent = S.bpm + ' bpm'; updateEstimate();
+  };
+  tempo.addEventListener('input', () => setTempo(+tempo.value));
+  $('tempoDown').addEventListener('click', () => setTempo(S.bpm - 4));
+  $('tempoUp').addEventListener('click', () => setTempo(S.bpm + 4));
+
+  radios('format', (v) => { S.format = v; updateEstimate(); });
+  radios('reps', (v) => { S.reps = +v; updateEstimate(); });
+  radios('level', (v) => { S.level = +v; updateEstimate(); });
+  radios('dir', (v) => { S.stepSemis = +v; circle.dataset.dir = v; refreshKeys(); });
+  radios('click', (v) => { S.click = v; });
+  radios('fifth', (v) => {
+    S.fifth = v === '1';
+    if (E.running && !E.paused && A.dronePc != null) setDrone(A.dronePc, A.ctx.currentTime);
+  });
+  $('startKey').addEventListener('change', (e) => { S.startPc = +e.target.value; refreshKeys(); });
+  $('droneVol').addEventListener('input', (e) => { S.droneVol = +e.target.value; setBus(() => A.droneBus, volGain(S.droneVol, 0.9)); });
+  $('melVol').addEventListener('input', (e) => { S.melVol = +e.target.value; setBus(() => A.mel, volGain(S.melVol, 1)); });
+  $('showNotes').addEventListener('change', (e) => {
+    S.showNotes = e.target.checked;
+    if (S.showNotes && E.running) E.notesShown = true;
+    $('notes').hidden = !S.showNotes || !U.active || U.finished;
+    if (!S.showNotes) clearHighlight();
+  });
+
+  $('allKeys').addEventListener('click', () => { for (let i = 0; i < 12; i++) S.enabled.add(i); refreshKeys(); });
+  $('start').addEventListener('click', start);
+  $('again').addEventListener('click', start);
+  $('pause').addEventListener('click', togglePause);
+  $('next').addEventListener('click', () => { if (E.running && !E.ending) { if (E.paused) togglePause(); E.skip = true; } });
+  $('hold').addEventListener('click', () => setHold(!S.hold));
+  $('stop').addEventListener('click', stop);
+  $('check').addEventListener('click', quizCheck);
+  $('reveal').addEventListener('click', quizReveal);
+  $('replay').addEventListener('click', replay);
+}
+
+init();
+})();
+</script>
+</body>
+</html>
